@@ -33,12 +33,11 @@ int Height_global = 400;
 int Z_buffer_bit_depth = 128;
 vector< vector < vector < glm::vec3>>> patches; // Patches data structure [# patches][4][4][xyz point]
 vector<shape> shapes; // Shapes (either triangle or quad)
-bool is_adaptive; // adaptive or uniform subdivision
-bool is_smooth_shade; // If not smooth, then flat shading
+bool is_adaptive = true; // adaptive or uniform subdivision
+bool is_smooth_shade = true; // If not smooth, then flat shading
 float step_size;
 int num_steps;
-bool wireframe_mode;
-bool filled_mode;
+bool wireframe_mode = true;
 float epsilon;
 
 inline float sqr(float x) { return x*x; }
@@ -147,6 +146,20 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
             if (action && mods == GLFW_MOD_SHIFT) translation[1] -= 0.001f * Height_global; break;
         case GLFW_KEY_F:
             if (action && mods == GLFW_MOD_SHIFT) auto_strech = !auto_strech; break;
+        case GLFW_KEY_S: 
+            is_smooth_shade = -1 * is_smooth_shade;
+            break;
+        case GLFW_KEY_W: 
+            wireframe_mode = -1 * wireframe_mode;
+            break;
+        case '=': 
+            translation[2] += 0.001f;
+            cout << "add" << endl;
+            break;
+        case '-': 
+            translation[2] -= 0.001f;
+            cout << "sub" << endl;
+            break;
         case GLFW_KEY_SPACE: break;
             
         default: break;
@@ -155,7 +168,6 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 }
 
 void drawShapes(){
-
     glBegin(GL_QUADS);
     for(shape s: shapes) {
         glColor3f(0.0f, 0.0f, 1.0f);
@@ -163,11 +175,7 @@ void drawShapes(){
             glVertex3f(v[0], v[1], v[2]);
         }
     }
-
     glEnd();
-
-    
-
 }
 
 //****************************************************
