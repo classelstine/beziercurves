@@ -33,7 +33,7 @@ void adaptive_subdivision(vector<vector<glm::vec3>> patch);
 // Given a single patch, step size, and num_steps, creates list of squares that are
 // sufficiently small, and pushes them back on to the global list of shapes
 // ****************
-void uniform_subdivision(vector<vector<glm::vec3>> patch, float step_size, int num_steps);
+void uniform_subdivision(float step_size, int num_steps);
 
 
 // *****************
@@ -55,4 +55,4 @@ glm::vec3 patch_interp(vector<vector<glm::vec3>> patch, float u, float v, glm::v
 // Given a curve of four control points, finds the bezier interpolation on this curve and
 // evaluates at a given u value, and finds the derivative
 // *****************
-glm::vec3 curve_interp(vector<glm::vec3> curve, float param, float *derivative);
+glm::vec3 curve_interp(vector<glm::vec3> curve, float param, glm::vec3 *derivative);

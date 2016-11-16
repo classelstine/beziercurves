@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cmath>
 #include <glm/vec3.hpp>
+#include <glm/glm.hpp>
 //include header file for glfw library so that we can use OpenGL
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
@@ -37,11 +38,11 @@ int Height_global = 400;
 int Z_buffer_bit_depth = 128;
 vector< vector < vector < glm::vec3>>> patches; // Patches data structure [# patches][4][4][xyz point]
 vector<shape> shapes; // Shapes (either triangle or quad)
-bool is_adaptive = true; // adaptive or uniform subdivision
+bool is_adaptive = false; // adaptive or uniform subdivision
 bool is_smooth_shade = true; // If not smooth, then flat shading
 float step_size;
 int num_steps;
-bool wireframe_mode = true;
+bool wireframe_mode = false;
 float epsilon;
 int total_patches;
 float zoom = 1;
@@ -119,7 +120,27 @@ void adaptive_subdivision(vector<vector<glm::vec3>> patch){
 // Given a single patch, step size, and num_steps, creates list of squares that are
 // sufficiently small, and pushes them back on to the global list of shapes
 // ****************
-void uniform_subdivision(vector<vector<glm::vec3>> patch, float step_size, int num_steps){
+void uniform_subdivision(void) {
+    for(int i = 0; i < patches.size(); i++) { 
+        cout << "done with iteration " << i << endl;
+        vector<vector<glm::vec3>> curr_patch = patches.at(i); 
+        for(int j = 0; j < num_steps; j++) { 
+            for(int k = 0; k < num_steps; k++) { 
+                float u = j*step_size;  
+                float v = k*step_size;  
+                glm::vec3 n1, n2, n3, n4;
+                glm::vec3 p1, p2, p3, p4;
+                p1 = patch_interp(curr_patch, u, v, &n1); 
+                p2 = patch_interp(curr_patch, u+step_size, v, &n3); 
+                p3 = patch_interp(curr_patch, u+step_size, v+step_size, &n4); 
+                p4 = patch_interp(curr_patch, u, v+step_size, &n2); 
+                shape curr_shape = shape();
+                curr_shape.vertices = {p1, p2, p3, p4}; 
+                curr_shape.normals = {n1, n2, n3, n4}; 
+                shapes.push_back(curr_shape);
+            } 
+        } 
+    }
 }
 
 
@@ -137,8 +158,29 @@ void triangulate(vector<vector<glm::vec3>> patch, float p1[2], float p2[2], floa
 // also finds the normal at this point
 // ****************
 glm::vec3 patch_interp(vector<vector<glm::vec3>> patch, float u, float v, glm::vec3 * norm) {
-    glm::vec3 point = glm::vec3(0,0,0);
-    return point;
+    glm::vec3 u1, u2, u3, u4, v1, v2, v3, v4, p;
+    glm::vec3 du, dv;
+    u1 = curve_interp(patch[0], v, &dv);
+    u2 = curve_interp(patch[1], v, &dv);
+    u3 = curve_interp(patch[2], v, &dv);
+    u4 = curve_interp(patch[3], v, &dv);
+
+    vector<glm::vec3> curve_v1, curve_v2, curve_v3, curve_v4;
+    curve_v1 = {patch[0][0], patch[1][0], patch[2][0], patch[3][0]};
+    v1 = curve_interp(curve_v1, u, &dv);
+    curve_v2 = {patch[0][1], patch[1][1], patch[2][1], patch[3][1]};
+    v2 = curve_interp(curve_v2, u, &dv);
+    curve_v3 = {patch[0][2], patch[1][2], patch[2][2], patch[3][2]}; 
+    v3 = curve_interp(curve_v3, u, &dv);
+    curve_v4 = {patch[0][3], patch[1][3], patch[2][3], patch[3][3]}; 
+    v4 = curve_interp(curve_v4, u, &dv);
+    
+    vector<glm::vec3> curve_u = {u1, u2, u3, u4}; 
+    vector<glm::vec3> curve_v = {v1, v2, v3, v4};
+    p = curve_interp(curve_u, u, &du);
+    p = curve_interp(curve_v, v, &dv);
+    *norm = glm::normalize(glm::cross(du, dv)); 
+    return p;
 }
 
 // *****************
@@ -146,9 +188,21 @@ glm::vec3 patch_interp(vector<vector<glm::vec3>> patch, float u, float v, glm::v
 // Given a curve of four control points, finds the bezier interpolation on this curve and
 // evaluates at a given u value, and finds the derivative
 // *****************
-glm::vec3 curve_interp(vector<glm::vec3> curve, float param, float *derivative) {
-    glm::vec3 point = glm::vec3(0,0,0);
-    return point; 
+glm::vec3 curve_interp(vector<glm::vec3> curve, float param, glm::vec3 *dPdU) {
+    glm::vec3 A, B, C, D, E, p; 
+
+    A = curve[0]*(1.0f - param) + curve[1]*param;
+    B = curve[1]*(1.0f - param) + curve[2]*param;
+    C = curve[2]*(1.0f - param) + curve[3]*param;
+
+    D = A*(1.0f - param) + B*param;
+    E = B*(1.0f - param) + C*param;
+
+    p = D*(1.0f - param) + E*param;
+
+    *dPdU = 3.0f*(E-D);
+
+    return p;
 }
 
 
@@ -235,18 +289,19 @@ void drawShapes(){
     glBegin(GL_QUADS);
     for(shape s: shapes) {
         glColor3f(0.0f, 0.0f, 1.0f);
+        int i = 0;
         for(glm::vec3 v : s.vertices) {
             glVertex3f(v[0], v[1], v[2]);
         }
     }
     glEnd();
 }
-
 //****************************************************
 // Draw a cube. You don't need this for your final assignment, but it's
 // here so you don't look at a blank screen.
 // Taken from https://www.ntu.edu.sg/home/ehchua/programming/opengl/CG_Examples.html
 //****************************************************
+/*
 void drawCube() {
     
     shapes = vector<shape>();
@@ -307,7 +362,7 @@ void drawCube() {
     shapes.push_back(shape6);
     drawShapes();
 }
-
+*/
 
 //****************************************************
 // function that does the actual drawing of stuff
@@ -331,7 +386,8 @@ void display( GLFWwindow* window )
     glRotatef(rotation[1], 0.0f, 1.0f, 0.0f);
     glRotatef(rotation[2], 0.0f, 0.0f, 1.0f);
     
-    drawCube(); // REPLACE ME!
+    //drawCube(); // REPLACE ME!
+    drawShapes();
 
     glPopMatrix();
 
@@ -413,15 +469,25 @@ int main(int argc, char *argv[]) {
     glfwSetKeyCallback(window, key_callback);
 
     parse_file(argv[1]); 
+    step_size = atof(argv[2]);  
+    num_steps = ceil(1.0f/step_size); 
+    if (is_adaptive) { 
+        cout << "not implemented" << endl;
+    } else { 
+        uniform_subdivision(); 
+    } 
+    /*
     for (int i = 0; i < total_patches; i++) { 
         cout << "this is patch " << i << endl;
         for (int j = 0; j < 4; j++) { 
             cout << "this is v" << j << endl;
             for (int k = 0; k < 4; k++) { 
+                cout << "array index patches[" << i << "]" << "[" << j << "]" << "[" << k << "]" << endl;
                 cout << patches[i][j][k][0] << " " << patches[i][j][k][1] << " " << patches[i][j][k][2] << endl;
             } 
         } 
     } 
+    */
     while( !glfwWindowShouldClose( window ) ) // infinite loop to draw object again and again
     {   // because once object is draw then window is terminated
         display( window );
