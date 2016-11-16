@@ -10,7 +10,7 @@ struct shape {
 //  PARSE 
 //  Parses a .bez file, and populates the global patches vector
 //  ***************
-void parse_file(char* filename);
+bool parse_file(char* filename);
 
 // ****************
 // CREATE SHAPES
