@@ -30,20 +30,21 @@ For UC Berkeley's CS184 Fall 2016 course, assignment 3 (Bezier surfaces)
 // Global Variables
 //****************************************************
 GLfloat translation[3] = {0.0f, 0.0f, 0.0f};
+GLfloat rotation[3] = {0.0f, 0.0f, 0.0f}; // Rotation of angle, axis_x, axis_y, axis_z
 bool auto_strech = false;
 int Width_global = 400;
 int Height_global = 400;
 int Z_buffer_bit_depth = 128;
 vector< vector < vector < glm::vec3>>> patches; // Patches data structure [# patches][4][4][xyz point]
 vector<shape> shapes; // Shapes (either triangle or quad)
-bool is_adaptive; // adaptive or uniform subdivision
-bool is_smooth_shade; // If not smooth, then flat shading
+bool is_adaptive = true; // adaptive or uniform subdivision
+bool is_smooth_shade = true; // If not smooth, then flat shading
 float step_size;
 int num_steps;
-bool wireframe_mode;
-bool filled_mode;
+bool wireframe_mode = true;
 float epsilon;
 int total_patches;
+float zoom = 1;
 
 inline float sqr(float x) { return x*x; }
 
@@ -181,24 +182,56 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
         case GLFW_KEY_Q: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
         case GLFW_KEY_LEFT :
-            if (action && mods == GLFW_MOD_SHIFT) translation[0] -= 0.001f * Width_global; break;
+            if (action && mods == GLFW_MOD_SHIFT) {
+                translation[0] -= 0.001f * Width_global;
+            } else {
+                rotation[0] += 5.0f;
+            }
+            break;
         case GLFW_KEY_RIGHT:
-            if (action && mods == GLFW_MOD_SHIFT) translation[0] += 0.001f * Width_global; break;
+            if (action && mods == GLFW_MOD_SHIFT){
+                translation[0] += 0.001f * Width_global;
+            } else {
+                rotation[0] -= 5.0f;
+            }
+            break;
         case GLFW_KEY_UP   :
-            if (action && mods == GLFW_MOD_SHIFT) translation[1] += 0.001f * Height_global; break;
+            if (action && mods == GLFW_MOD_SHIFT) {
+                translation[1] += 0.001f * Height_global;
+            } else {
+                rotation[1] += 5.0f;
+            }
+            break;
         case GLFW_KEY_DOWN :
-            if (action && mods == GLFW_MOD_SHIFT) translation[1] -= 0.001f * Height_global; break;
-        case GLFW_KEY_F:
+            if (action && mods == GLFW_MOD_SHIFT) {
+                translation[1] -= 0.001f * Height_global;
+            } else {
+                rotation[2] += 5.0f;
+            }
+            break;
+        case GLFW_KEY_F :
             if (action && mods == GLFW_MOD_SHIFT) auto_strech = !auto_strech; break;
-        case GLFW_KEY_SPACE: break;
-            
+        case GLFW_KEY_S : 
+            is_smooth_shade = -1 * is_smooth_shade;
+            break;
+        case GLFW_KEY_W : 
+            wireframe_mode = -1 * wireframe_mode;
+            break;
+        case GLFW_KEY_EQUAL: 
+            translation[2] += 0.5f;
+            cout << "add" << endl;
+            break;
+        case GLFW_KEY_MINUS :
+            translation[2] -= 0.5f;
+            cout << "sub" << endl;
+            break;
+        case GLFW_KEY_SPACE : break;
         default: break;
     }
     
 }
 
 void drawShapes(){
-
     glBegin(GL_QUADS);
     for(shape s: shapes) {
         glColor3f(0.0f, 0.0f, 1.0f);
@@ -206,11 +239,7 @@ void drawShapes(){
             glVertex3f(v[0], v[1], v[2]);
         }
     }
-
     glEnd();
-
-    
-
 }
 
 //****************************************************
@@ -285,6 +314,8 @@ void drawCube() {
 //***************************************************
 void display( GLFWwindow* window )
 {
+    
+    //glOrtho(0*zoom, Width_global*zoom, 0*zoom, Height_global*zoom, 1, -1);
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f ); //clear background screen to black
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                // clear the color buffer (sets everything to black)
@@ -292,9 +323,14 @@ void display( GLFWwindow* window )
     glLoadIdentity();                            // make sure transformation is "zero'd"
     
     //----------------------- code to draw objects --------------------------
+    
+    //glOrtho(0*zoom, Width_global*zoom, 0*zoom, Height_global*zoom, 1, -1);
     glPushMatrix();
     glTranslatef (translation[0], translation[1], translation[2]);
-    glRotatef(45, 1, 1, 0); //rotates the cube below
+    glRotatef(rotation[0], 1.0f, 0.0f, 0.0f);
+    glRotatef(rotation[1], 0.0f, 1.0f, 0.0f);
+    glRotatef(rotation[2], 0.0f, 0.0f, 1.0f);
+    
     drawCube(); // REPLACE ME!
 
     glPopMatrix();
