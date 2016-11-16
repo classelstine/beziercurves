@@ -398,8 +398,13 @@ void drawShapes(){
         glColor3f(0.0f, 0.0f, 1.0f);
         int i = 0;
         for(glm::vec3 v : s.vertices) {
-            //cout << "xyz " << v[0] << " " << v[1] << " " << v[2] << endl;
+            cout << "xyz " << v[0] << " " << v[1] << " " << v[2] << endl;
+            if (s.normals.size() > i) {
+                cout << "using normal" << endl;
+                glNormal3f(s.normals[i][0], s.normals[i][1], s.normals[i][2]);
+            }
             glVertex3f(v[0], v[1], v[2]);
+            i++;
         }
     }
     glEnd();
@@ -480,10 +485,13 @@ void display( GLFWwindow* window )
     
     //glOrtho(0*zoom, Width_global*zoom, 0*zoom, Height_global*zoom, 1, -1);
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f ); //clear background screen to black
-    
+    GLfloat light_pos[] = {1.0, 2.0, 3.0, 1.0}; 
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);                // clear the color buffer (sets everything to black)
     glMatrixMode(GL_MODELVIEW);                  // indicate we are specifying camera transformations
     glLoadIdentity();                            // make sure transformation is "zero'd"
+    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
     
     //----------------------- code to draw objects --------------------------
     
