@@ -50,6 +50,13 @@ float zoom = 1;
 inline float sqr(float x) { return x*x; }
 
 
+bool close_enough(glm::vec3 p1, glm::vec3 p2, float epsilon) {
+    float dist = glm::distance(p1, p2); 
+    //cout << "this is dist " << dist << endl;
+    bool is_close = (dist < epsilon);
+    //cout << "this is is_close" << is_close << endl;
+    return is_close;
+}
 
 // ****************
 //  PARSE 
@@ -71,12 +78,14 @@ bool parse_file(char* filename){
             curr_line >> total_patches;
             continue;
         } 
-        //cout << line.length() << " is the LINE LENGTH " << endl;
-        //cout << line << endl;
+        cout << line.length() << " is the LINE LENGTH " << endl;
+        cout << line << endl;
         if (line.length() == 1) { 
-            patches.push_back(single_patch);
-            single_patch.clear();
-            cout << "done with patch" << endl;
+            if (single_patch.size() > 0) { 
+                patches.push_back(single_patch);
+                cout << "PUSHED BACK SIZE:" << single_patch.size();
+                single_patch.clear();
+            } 
             continue;
         } 
         vector < glm::vec3 > control_points; //First 4 control points 
@@ -91,8 +100,12 @@ bool parse_file(char* filename){
             control_points.push_back(control_point); 
         } 
         single_patch.push_back(control_points); 
-        cout << "finished line" << endl;
     }
+    if (single_patch.size() > 0) {
+        patches.push_back(single_patch);
+        cout << "PUSHED BACK SIZE:" << single_patch.size();
+        single_patch.clear();
+    } 
     cout << "BEZ DONE" << endl;
     return true;
 }
@@ -104,6 +117,21 @@ bool parse_file(char* filename){
 // or a vector of squares
 // ****************
 void create_shapes(void){
+    if (is_adaptive) { 
+        for(int i = 0; i < patches.size(); i++) { 
+            vector<vector<glm::vec3>> curr_patch = patches.at(i); 
+            float p1[2] =  {0,0};
+            float p2[2] = {1,0};
+            float p3[2] = {0,1};
+            float p4[2]  = {1,1};
+            triangulate(curr_patch, p1, p2, p3);  
+            triangulate(curr_patch, p2, p3, p4);  
+            //cout << "Done with iteration " << i << endl;
+        } 
+    } else { 
+        uniform_subdivision(); 
+    } 
+    //cout << "done with shpae creation" << endl;
 }
 
 // ****************
@@ -122,7 +150,7 @@ void adaptive_subdivision(vector<vector<glm::vec3>> patch){
 // ****************
 void uniform_subdivision(void) {
     for(int i = 0; i < patches.size(); i++) { 
-        cout << "done with iteration " << i << endl;
+        //cout << "patches.size() is " << patches.size() << endl;
         vector<vector<glm::vec3>> curr_patch = patches.at(i); 
         for(int j = 0; j < num_steps; j++) { 
             for(int k = 0; k < num_steps; k++) { 
@@ -130,14 +158,21 @@ void uniform_subdivision(void) {
                 float v = k*step_size;  
                 glm::vec3 n1, n2, n3, n4;
                 glm::vec3 p1, p2, p3, p4;
+                //cout << "1" << endl;
+                //cout << "u is " << u << endl;
+                //cout << "v is " << v << endl;
+                //cout << "j is " << j << endl;
+                //cout << "k is " << k << endl;
+                //cout << "step size is " << step_size << endl;
                 p1 = patch_interp(curr_patch, u, v, &n1); 
-                p2 = patch_interp(curr_patch, u+step_size, v, &n3); 
-                p3 = patch_interp(curr_patch, u+step_size, v+step_size, &n4); 
-                p4 = patch_interp(curr_patch, u, v+step_size, &n2); 
-                shape curr_shape = shape();
-                curr_shape.vertices = {p1, p2, p3, p4}; 
-                curr_shape.normals = {n1, n2, n3, n4}; 
-                shapes.push_back(curr_shape);
+                p2 = patch_interp(curr_patch, u+step_size, v, &n2); 
+                p3 = patch_interp(curr_patch, u+step_size, v+step_size, &n3); 
+                p4 = patch_interp(curr_patch, u, v+step_size, &n4); 
+                //cout << "2" << endl;
+                shape quad = shape();
+                quad.vertices = {p1, p2, p3, p4}; 
+                quad.normals = {n1, n2, n3, n4}; 
+                shapes.push_back(quad);
             } 
         } 
     }
@@ -148,7 +183,75 @@ void uniform_subdivision(void) {
 // TRIANGULATE 
 // Given a patch and three (u,v) pairs, and global epsilon, push back onto global shape list
 // *****************
-void triangulate(vector<vector<glm::vec3>> patch, float p1[2], float p2[2], float p3[2]){
+void triangulate(vector<vector<glm::vec3>> curr_patch, float p1[2], float p2[2], float p3[2]){
+    glm::vec3 v1, v2, v3, n1, n2, n3;
+    v1 = patch_interp(curr_patch, p1[0], p1[1], &n1); 
+    v2 = patch_interp(curr_patch, p2[0], p2[1], &n2); 
+    v3 = patch_interp(curr_patch, p3[0], p3[1], &n3); 
+    
+    glm::vec3 mid12, mid13, mid23; 
+    mid12 = (v1+v2)/2.0f;
+    mid13 = (v1+v3)/2.0f;
+    mid23 = (v2+v3)/2.0f;
+    
+    glm::vec3 bez12, bez13, bez23;
+    glm::vec3 n12, n13, n23;
+    float uv12[2] = { (p1[0] + p2[0])/2, (p1[1] + p2[1])/2};
+    float uv13[2] = { (p1[0] + p3[0])/2, (p1[1] + p3[1])/2 };
+    float uv23[2] = { (p2[0] + p3[0])/2, (p2[1] + p3[1])/2 };
+    bez12 = patch_interp(curr_patch, uv12[0], uv12[1], &n12);
+    bez13 = patch_interp(curr_patch, uv13[0], uv13[1], &n13);
+    bez23 = patch_interp(curr_patch, uv23[0], uv23[1], &n23);
+
+    bool touching12 = close_enough(mid12, bez12, epsilon);
+    bool touching13 = close_enough(mid13, bez13, epsilon);
+    bool touching23 = close_enough(mid23, bez23, epsilon);
+
+    if (touching12 && touching13 && touching23) {
+        //cout << "ADDED SHAPE" << endl;
+        shape tri = shape();
+        tri.vertices.push_back(v1);
+        tri.vertices.push_back(v2);
+        tri.vertices.push_back(v3);
+
+        tri.normals.push_back(n1);
+        tri.normals.push_back(n2);
+        tri.normals.push_back(n3);
+        shapes.push_back(tri);
+    } 
+    else if (touching12 && touching13 && !touching23) {
+        triangulate(curr_patch, p1, p2, uv23);
+        triangulate(curr_patch, p1, p3, uv23);
+    } 
+    else if (touching12 && !touching13 && touching23) {
+        triangulate(curr_patch, p1, p2, uv13);
+        triangulate(curr_patch, p2, p3, uv13);
+    } 
+    else if (!touching12 && touching13 && touching23) {
+        triangulate(curr_patch, p1, p3, uv12);
+        triangulate(curr_patch, p2, p3, uv12);
+    } 
+    else if (touching12 && !touching13 && !touching23) {
+        triangulate(curr_patch, p3, uv23, uv13);
+        triangulate(curr_patch, p2, uv13, uv23);
+        triangulate(curr_patch, p1, p2, uv13);
+    }
+    else if (!touching12 && !touching13 && touching23) {
+        triangulate(curr_patch, p1, uv12, uv13);
+        triangulate(curr_patch, p2, uv12, uv13);
+        triangulate(curr_patch, p2, p3, uv13);
+    } 
+    else if (!touching12 && touching13 && !touching23) {
+        triangulate(curr_patch, p2, uv12, uv23);
+        triangulate(curr_patch, p1, uv12, uv23);
+        triangulate(curr_patch, p1, p3, uv23);
+    } 
+    else if (!touching12 && !touching13 && !touching23) {
+        triangulate(curr_patch, p1, uv12, uv13);
+        triangulate(curr_patch, p2, uv12, uv23);
+        triangulate(curr_patch, p3, uv13, uv23);
+        triangulate(curr_patch, uv12, uv13, uv23);
+    } 
 }
 
 // ****************
@@ -286,11 +389,16 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 }
 
 void drawShapes(){
-    glBegin(GL_QUADS);
+    if (is_adaptive) {
+        glBegin(GL_TRIANGLES) ;
+    } else {
+        glBegin(GL_QUADS);
+    }
     for(shape s: shapes) {
         glColor3f(0.0f, 0.0f, 1.0f);
         int i = 0;
         for(glm::vec3 v : s.vertices) {
+            //cout << "xyz " << v[0] << " " << v[1] << " " << v[2] << endl;
             glVertex3f(v[0], v[1], v[2]);
         }
     }
@@ -468,14 +576,31 @@ int main(int argc, char *argv[]) {
     glfwSetWindowSizeCallback(window, size_callback);
     glfwSetKeyCallback(window, key_callback);
 
-    parse_file(argv[1]); 
-    step_size = atof(argv[2]);  
-    num_steps = ceil(1.0f/step_size); 
-    if (is_adaptive) { 
-        cout << "not implemented" << endl;
-    } else { 
-        uniform_subdivision(); 
+    if (argc < 3) { 
+        cout << "ERROR: INVALID PROGRAM PARAMETERS" << endl; 
+    } else if (argc == 3) { 
+        parse_file(argv[1]); 
+        is_adaptive = false;
+        step_size = atof(argv[2]);  
+        num_steps = ceil(1.0f/step_size); 
+    } else if (argc == 4) { 
+        parse_file(argv[1]); 
+        epsilon = atof(argv[2]);  
+        is_adaptive = true;
+        cout << "MAKING ADAPTIVE" << endl;
     } 
+    for (int i = 0; i < total_patches; i++) { 
+        cout << "this is patch " << i << endl;
+        for (int j = 0; j < 4; j++) { 
+            cout << "this is v" << j << endl;
+            for (int k = 0; k < 4; k++) { 
+                cout << "array index patches[" << i << "]" << "[" << j << "]" << "[" << k << "]" << endl;
+                cout << patches[i][j][k][0] << " " << patches[i][j][k][1] << " " << patches[i][j][k][2] << endl;
+            } 
+        } 
+    } 
+    cout << "patches.size() is " << patches.size() << endl;
+    create_shapes(); 
     /*
     for (int i = 0; i < total_patches; i++) { 
         cout << "this is patch " << i << endl;

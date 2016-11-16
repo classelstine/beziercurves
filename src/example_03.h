@@ -6,6 +6,7 @@ struct shape {
     bool has_normals;
 };
 
+bool close_enough(glm::vec3 p1, glm::vec3 p2, float epsilon);
 // ****************
 //  PARSE 
 //  Parses a .bez file, and populates the global patches vector
@@ -33,7 +34,7 @@ void adaptive_subdivision(vector<vector<glm::vec3>> patch);
 // Given a single patch, step size, and num_steps, creates list of squares that are
 // sufficiently small, and pushes them back on to the global list of shapes
 // ****************
-void uniform_subdivision(float step_size, int num_steps);
+void uniform_subdivision(void);
 
 
 // *****************
