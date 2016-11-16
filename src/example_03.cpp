@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <fstream> 
+#include <sstream>
+#include <string> 
 #include "example_03.h"
 #ifdef _WIN32
 static DWORD lastTime;
@@ -40,6 +43,7 @@ int num_steps;
 bool wireframe_mode;
 bool filled_mode;
 float epsilon;
+int total_patches;
 
 inline float sqr(float x) { return x*x; }
 
@@ -49,7 +53,46 @@ inline float sqr(float x) { return x*x; }
 //  PARSE 
 //  Parses a .bez file, and populates the global patches vector
 //  ***************
-void parse_file(char* filename){
+bool parse_file(char* filename){
+    string line; 
+    ifstream bezfile(filename);
+    int linecount = 0; 
+    if(!bezfile.is_open()){
+        printf("Can't read the BEZ file !\n");
+        return false;
+    }
+    vector<vector<glm::vec3>> single_patch; 
+    while(getline(bezfile, line)) {
+        linecount++;
+        if (linecount == 1) { 
+            stringstream curr_line(line);
+            curr_line >> total_patches;
+            continue;
+        } 
+        //cout << line.length() << " is the LINE LENGTH " << endl;
+        //cout << line << endl;
+        if (line.length() == 1) { 
+            patches.push_back(single_patch);
+            single_patch.clear();
+            cout << "done with patch" << endl;
+            continue;
+        } 
+        vector < glm::vec3 > control_points; //First 4 control points 
+        vector < float > coords; 
+        stringstream curr_line(line); 
+        float coord;
+        while (curr_line >> coord) { 
+            coords.push_back(coord);
+        } 
+        for (int i = 0; i < 12; i+=3) { 
+            glm::vec3 control_point(coords[i], coords[i+1], coords[i+2]); 
+            control_points.push_back(control_point); 
+        } 
+        single_patch.push_back(control_points); 
+        cout << "finished line" << endl;
+    }
+    cout << "BEZ DONE" << endl;
+    return true;
 }
 
 // ****************
@@ -323,6 +366,16 @@ int main(int argc, char *argv[]) {
     glfwSetWindowSizeCallback(window, size_callback);
     glfwSetKeyCallback(window, key_callback);
 
+    parse_file(argv[1]); 
+    for (int i = 0; i < total_patches; i++) { 
+        cout << "this is patch " << i << endl;
+        for (int j = 0; j < 4; j++) { 
+            cout << "this is v" << j << endl;
+            for (int k = 0; k < 4; k++) { 
+                cout << patches[i][j][k][0] << " " << patches[i][j][k][1] << " " << patches[i][j][k][2] << endl;
+            } 
+        } 
+    } 
     while( !glfwWindowShouldClose( window ) ) // infinite loop to draw object again and again
     {   // because once object is draw then window is terminated
         display( window );
