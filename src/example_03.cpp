@@ -169,10 +169,10 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         case GLFW_KEY_F :
             if (action && mods == GLFW_MOD_SHIFT) auto_strech = !auto_strech; break;
         case GLFW_KEY_S : 
-            is_smooth_shade = -1 * is_smooth_shade;
+            is_smooth_shade = !is_smooth_shade;
             break;
         case GLFW_KEY_W : 
-            wireframe_mode = -1 * wireframe_mode;
+            wireframe_mode = !wireframe_mode;
             break;
         case GLFW_KEY_EQUAL: 
             translation[2] += 0.5f;
@@ -291,12 +291,22 @@ void display( GLFWwindow* window )
     drawCube(); // REPLACE ME!
 
     glPopMatrix();
+
+    if (wireframe_mode) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    } else {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    if (is_smooth_shade) {
+        glShadeModel(GL_SMOOTH);
+    } else {
+        glShadeModel(GL_FLAT);
+    }
     
     glfwSwapBuffers(window);
 
-    // note: check out glPolygonMode and glShadeModel 
-    // for wireframe and shading commands
-    
+
 }
 
 //****************************************************
