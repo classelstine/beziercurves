@@ -52,9 +52,7 @@ inline float sqr(float x) { return x*x; }
 
 bool close_enough(glm::vec3 p1, glm::vec3 p2, float epsilon) {
     float dist = glm::distance(p1, p2); 
-    //cout << "this is dist " << dist << endl;
     bool is_close = (dist < epsilon);
-    //cout << "this is is_close" << is_close << endl;
     return is_close;
 }
 
@@ -78,12 +76,9 @@ bool parse_file(char* filename){
             curr_line >> total_patches;
             continue;
         } 
-        cout << line.length() << " is the LINE LENGTH " << endl;
-        cout << line << endl;
         if (line.length() == 1) { 
             if (single_patch.size() > 0) { 
                 patches.push_back(single_patch);
-                cout << "PUSHED BACK SIZE:" << single_patch.size();
                 single_patch.clear();
             } 
             continue;
@@ -103,10 +98,8 @@ bool parse_file(char* filename){
     }
     if (single_patch.size() > 0) {
         patches.push_back(single_patch);
-        cout << "PUSHED BACK SIZE:" << single_patch.size();
         single_patch.clear();
     } 
-    cout << "BEZ DONE" << endl;
     return true;
 }
 
@@ -126,12 +119,10 @@ void create_shapes(void){
             float p4[2]  = {1,1};
             triangulate(curr_patch, p1, p2, p3);  
             triangulate(curr_patch, p2, p3, p4);  
-            //cout << "Done with iteration " << i << endl;
         } 
     } else { 
         uniform_subdivision(); 
     } 
-    //cout << "done with shpae creation" << endl;
 }
 
 // ****************
@@ -150,7 +141,6 @@ void adaptive_subdivision(vector<vector<glm::vec3>> patch){
 // ****************
 void uniform_subdivision(void) {
     for(int i = 0; i < patches.size(); i++) { 
-        //cout << "patches.size() is " << patches.size() << endl;
         vector<vector<glm::vec3>> curr_patch = patches.at(i); 
         for(int j = 0; j < num_steps; j++) { 
             for(int k = 0; k < num_steps; k++) { 
@@ -158,17 +148,10 @@ void uniform_subdivision(void) {
                 float v = k*step_size;  
                 glm::vec3 n1, n2, n3, n4;
                 glm::vec3 p1, p2, p3, p4;
-                //cout << "1" << endl;
-                //cout << "u is " << u << endl;
-                //cout << "v is " << v << endl;
-                //cout << "j is " << j << endl;
-                //cout << "k is " << k << endl;
-                //cout << "step size is " << step_size << endl;
                 p1 = patch_interp(curr_patch, u, v, &n1); 
                 p2 = patch_interp(curr_patch, u+step_size, v, &n2); 
                 p3 = patch_interp(curr_patch, u+step_size, v+step_size, &n3); 
                 p4 = patch_interp(curr_patch, u, v+step_size, &n4); 
-                //cout << "2" << endl;
                 shape quad = shape();
                 quad.vertices = {p1, p2, p3, p4}; 
                 quad.normals = {n1, n2, n3, n4}; 
@@ -208,7 +191,6 @@ void triangulate(vector<vector<glm::vec3>> curr_patch, float p1[2], float p2[2],
     bool touching23 = close_enough(mid23, bez23, epsilon);
 
     if (touching12 && touching13 && touching23) {
-        //cout << "ADDED SHAPE" << endl;
         shape tri = shape();
         tri.vertices.push_back(v1);
         tri.vertices.push_back(v2);
@@ -282,7 +264,13 @@ glm::vec3 patch_interp(vector<vector<glm::vec3>> patch, float u, float v, glm::v
     vector<glm::vec3> curve_v = {v1, v2, v3, v4};
     p = curve_interp(curve_u, u, &du);
     p = curve_interp(curve_v, v, &dv);
-    *norm = glm::normalize(glm::cross(du, dv)); 
+    *norm = glm::normalize(glm::cross(du, dv));
+    if (isnan(glm::length(*norm) )) {
+        float nu = u + 0.1;
+        float nv = v + 0.1;
+        patch_interp(patch, nu, nv, norm);
+    }
+
     return p;
 }
 
@@ -339,31 +327,39 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
         case GLFW_KEY_Q: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
         case GLFW_KEY_LEFT :
-            if (action && mods == GLFW_MOD_SHIFT) {
-                translation[0] -= 0.001f * Width_global;
-            } else {
-                rotation[0] += 5.0f;
+            if (action) {
+                if (mods == GLFW_MOD_SHIFT) {
+                    translation[0] -= 0.001f * Width_global;
+                } else {
+                    rotation[0] += 5.0f;
+                }
             }
             break;
         case GLFW_KEY_RIGHT:
-            if (action && mods == GLFW_MOD_SHIFT){
-                translation[0] += 0.001f * Width_global;
-            } else {
-                rotation[0] -= 5.0f;
+            if (action) {
+                if (mods == GLFW_MOD_SHIFT){
+                    translation[0] += 0.001f * Width_global;
+                } else {
+                    rotation[0] -= 5.0f;
+                }
             }
             break;
         case GLFW_KEY_UP   :
-            if (action && mods == GLFW_MOD_SHIFT) {
-                translation[1] += 0.001f * Height_global;
-            } else {
-                rotation[1] += 5.0f;
+            if (action) {
+                if (mods == GLFW_MOD_SHIFT) {
+                    translation[1] += 0.001f * Height_global;
+                } else {
+                    rotation[1] += 5.0f;
+                }
             }
             break;
         case GLFW_KEY_DOWN :
-            if (action && mods == GLFW_MOD_SHIFT) {
-                translation[1] -= 0.001f * Height_global;
-            } else {
-                rotation[2] += 5.0f;
+            if (action) {
+                if (mods == GLFW_MOD_SHIFT) {
+                    translation[1] -= 0.001f * Height_global;
+                } else {
+                    rotation[2] += 5.0f;
+                }
             }
             break;
         case GLFW_KEY_F :
@@ -375,12 +371,10 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
             if (action) wireframe_mode = !wireframe_mode;
             break;
         case GLFW_KEY_EQUAL: 
-            translation[2] += 0.5f;
-            cout << "add" << endl;
+            if (action) translation[2] += 0.1f;
             break;
         case GLFW_KEY_MINUS :
-            translation[2] -= 0.5f;
-            cout << "sub" << endl;
+            if (action) translation[2] -= 0.1f;
             break;
         case GLFW_KEY_SPACE : break;
         default: break;
@@ -398,11 +392,7 @@ void drawShapes(){
         glColor3f(0.0f, 0.0f, 1.0f);
         int i = 0;
         for(glm::vec3 v : s.vertices) {
-            cout << "xyz " << v[0] << " " << v[1] << " " << v[2] << endl;
-            if (s.normals.size() > i) {
-                cout << "using normal" << endl;
-                glNormal3f(s.normals[i][0], s.normals[i][1], s.normals[i][2]);
-            }
+            glNormal3f(s.normals[i][0], s.normals[i][1], s.normals[i][2]);
             glVertex3f(v[0], v[1], v[2]);
             i++;
         }
@@ -595,19 +585,13 @@ int main(int argc, char *argv[]) {
         parse_file(argv[1]); 
         epsilon = atof(argv[2]);  
         is_adaptive = true;
-        cout << "MAKING ADAPTIVE" << endl;
     } 
     for (int i = 0; i < total_patches; i++) { 
-        cout << "this is patch " << i << endl;
         for (int j = 0; j < 4; j++) { 
-            cout << "this is v" << j << endl;
             for (int k = 0; k < 4; k++) { 
-                cout << "array index patches[" << i << "]" << "[" << j << "]" << "[" << k << "]" << endl;
-                cout << patches[i][j][k][0] << " " << patches[i][j][k][1] << " " << patches[i][j][k][2] << endl;
             } 
         } 
     } 
-    cout << "patches.size() is " << patches.size() << endl;
     create_shapes(); 
     /*
     for (int i = 0; i < total_patches; i++) { 
