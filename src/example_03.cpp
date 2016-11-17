@@ -369,10 +369,10 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
         case GLFW_KEY_F :
             if (action && mods == GLFW_MOD_SHIFT) auto_strech = !auto_strech; break;
         case GLFW_KEY_S : 
-            is_smooth_shade = !is_smooth_shade;
+            if (action) is_smooth_shade = !is_smooth_shade;
             break;
         case GLFW_KEY_W : 
-            wireframe_mode = !wireframe_mode;
+            if (action) wireframe_mode = !wireframe_mode;
             break;
         case GLFW_KEY_EQUAL: 
             translation[2] += 0.5f;
